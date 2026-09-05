@@ -25,6 +25,17 @@ function getOrigin(vendor: string) {
     "Island Harvest Collective": "Kerala",
     "Kongu Green Collective": "Tamil Nadu, India",
     "Madurai Earth Organics": "Tamil Nadu, India",
+    "Western Ghats Harvest": "Tamil Nadu, India",
+    "Southern Seed House": "Tamil Nadu, India",
+    "Kongu Grain Collective": "Tamil Nadu, India",
+    "Southern Pulse Collective": "Tamil Nadu, India",
+    "Kongu Oil Press": "Tamil Nadu, India",
+    "Coastal Palm Organics": "Tamil Nadu, India",
+    "Sivaganga Cane Collective": "Tamil Nadu, India",
+    "Southern Botanica": "Tamil Nadu, India",
+    "Delta Fresh Organics": "Tamil Nadu, India",
+    "Southern Grove Organics": "Tamil Nadu, India",
+    "Delta Grain Collective": "Tamil Nadu, India",
   };
   return origins[vendor] ?? "Verified origin";
 }
@@ -60,7 +71,7 @@ function FilterBar({ products, category, setCategory, moq, setMoq, search, setSe
 }
 
 export default function Home() {
-  const { data: products = [], isLoading } = trpc.commerce.products.list.useQuery({ first: 24 });
+  const { data: products = [], isLoading } = trpc.commerce.products.list.useQuery({ first: 50 });
   const { isAuthenticated } = useAuth();
   const utils = trpc.useUtils();
   const favorites = trpc.customer.favorites.list.useQuery(undefined, { enabled: isAuthenticated, retry: false });
@@ -91,14 +102,14 @@ export default function Home() {
           <div className="mt-9 flex flex-wrap gap-3"><a className="button-amber" href="#collection">Explore the collection <ArrowRight size={16} /></a><Link className="button-ghost-light" href="/buyer-guide">How it works <ArrowDown size={15} /></Link></div>
           <div className="mt-16 flex items-center gap-3 text-[11px] uppercase tracking-[0.2em] text-white/45"><span className="scroll-orb"><ArrowDown size={14} /></span> Scroll to discover</div>
         </div>
-        <div className="hero-orbit" aria-hidden="true"><span className="orbit-ring one" /><span className="orbit-ring two" /><span className="orbit-dot dot-one" /><span className="orbit-dot dot-two" /><div className="hero-note"><Sparkles size={14} className="text-amber-200" /><span>Curated finds</span><b>04</b></div></div>
+        <div className="hero-orbit" aria-hidden="true"><span className="orbit-ring one" /><span className="orbit-ring two" /><span className="orbit-dot dot-one" /><span className="orbit-dot dot-two" /><div className="hero-note"><Sparkles size={14} className="text-amber-200" /><span>Live catalog</span><b>50</b></div></div>
       </div>
     </section>
 
     <section className="trust-strip"><div className="mx-auto grid max-w-[1360px] gap-5 px-5 py-5 sm:grid-cols-3 lg:grid-cols-3 lg:px-10"><div className="trust-item"><BadgeCheck size={20} /><div><strong>Verified suppliers</strong><span>Traceable origin & quality</span></div></div><div className="trust-item"><Truck size={20} /><div><strong>Wholesale ready</strong><span>MOQ-led, reliable logistics</span></div></div><div className="trust-item"><Leaf size={20} /><div><strong>Considered goods</strong><span>Organic-first sourcing</span></div></div></div></section>
 
     <section id="collection" className="collection-section mx-auto max-w-[1360px] px-5 py-20 lg:px-10 lg:py-28">
-      <div className="flex flex-col justify-between gap-7 lg:flex-row lg:items-end"><div><p className="eyebrow text-[#b47d22]"><span className="eyebrow-rule amber" /> The collection</p><h2 className="section-title mt-5 max-w-2xl">A better starting point<br /><em>for your next order.</em></h2></div><p className="max-w-sm text-sm leading-6 text-[#6b716f]">From first sample to full production run, make every ingredient count. Explore products with the context to buy them well.</p></div>
+      <div className="flex flex-col justify-between gap-7 lg:flex-row lg:items-end"><div><p className="eyebrow text-[#b47d22]"><span className="eyebrow-rule amber" /> The collection · 50 live listings</p><h2 className="section-title mt-5 max-w-2xl">A better starting point<br /><em>for your next order.</em></h2></div><p className="max-w-sm text-sm leading-6 text-[#6b716f]">From first sample to full production run, make every ingredient count. Explore products with the context to buy them well.</p></div>
       <div className="mt-11"><FilterBar products={products} category={category} setCategory={setCategory} moq={moq} setMoq={setMoq} search={search} setSearch={setSearch} /></div>
       {isLoading ? <div className="product-grid mt-8">{[1, 2, 3, 4].map(value => <div className="skeleton-card" key={value}><div className="skeleton-image" /><div className="h-5 w-2/3 animate-pulse rounded bg-[#ece9e2]" /><div className="mt-3 h-4 w-full animate-pulse rounded bg-[#ece9e2]" /></div>)}</div> : filteredProducts.length > 0 ? <div className="product-grid mt-8">{filteredProducts.map((product, index) => <ProductCard key={product.id} product={product} featured={index === 0} isSaved={savedHandles.has(product.handle)} onToggleSave={toggleSave} />)}</div> : <div className="empty-state mt-8"><Filter size={24} /><h3 className="font-display text-3xl">No goods match that brief.</h3><p>Try a wider category or MOQ, or clear the search.</p><button className="button-outline mt-4" onClick={() => { setCategory("All"); setMoq("All"); setSearch(""); }}>Reset filters</button></div>}
     </section>

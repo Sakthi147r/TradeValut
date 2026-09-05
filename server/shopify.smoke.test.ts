@@ -1,10 +1,9 @@
 /**
  * Live smoke test for the Shopify Storefront integration.
  *
- * Goal: prove the store actually returns at least one usable product with
- * the three things a storefront needs to render — a title, an image, and a
- * non-zero price. If this passes, the homepage and PDP will work; if it
- * fails, there's an integration / catalog issue, not a UI bug.
+ * Goal: prove the live store returns the requested 50-product catalog with
+ * INR prices, images, and usable titles. If this passes, the homepage and PDP
+ * have a dependable catalog contract to render.
  *
  * Behavior:
  *   - Calls the real Storefront API via `listProducts()` (no mocking).
@@ -23,10 +22,10 @@ const configured = isShopifyConfigured();
 
 describe.skipIf(!configured)("shopify smoke (live)", () => {
   it(
-    "returns at least one product with title, image, and non-zero price",
+      "returns exactly 50 usable INR products with title, image, and price",
     { timeout: 30_000 },
     async () => {
-    const products = await listProducts({ first: 10 });
+    const products = await listProducts({ first: 50 });
 
     // Print a compact view so the agent can see the actual normalized output
     // (titles, prices, image URLs) directly in test logs.
@@ -40,20 +39,21 @@ describe.skipIf(!configured)("shopify smoke (live)", () => {
     // eslint-disable-next-line no-console
     console.log("[shopify smoke] products:", JSON.stringify(preview, null, 2));
 
-    expect(products.length).toBeGreaterThanOrEqual(1);
+    expect(products.length).toBe(50);
 
-    const usable = products.find(p => {
+    const unusable = products.find(p => {
       const hasTitle = typeof p.title === "string" && p.title.trim().length > 0;
       const hasImage = (p.images[0]?.url ?? "").length > 0;
       const priceNum = Number.parseFloat(p.priceRange.min.amount);
       const hasPrice = Number.isFinite(priceNum) && priceNum > 0;
-      return hasTitle && hasImage && hasPrice;
+      const isInr = p.priceRange.min.currencyCode === "INR";
+      return !(hasTitle && hasImage && hasPrice && isInr);
     });
 
       expect(
-        usable,
-        "No product had all three of: title, first image URL, and price > 0"
-      ).toBeTruthy();
+        unusable,
+        "Every product must have a title, first image URL, positive INR price, and usable catalog data"
+      ).toBeUndefined();
     }
   );
 });

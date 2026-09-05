@@ -24,8 +24,12 @@ function DetailView({ product }: { product: Product }) {
   const moq = getMoq(product);
   const pricing = useMemo(() => {
     const base = Number.parseFloat(product.priceRange.min.amount);
+    const moqNumber = Number.parseInt(moq, 10);
+    const firstLabel = Number.isFinite(moqNumber)
+      ? `${moq} – ${Math.max(moqNumber * 2 - 1, moqNumber + 10)} units`
+      : "Made to order · request pricing";
     return [
-      { label: `${moq} – ${Math.max(Number.parseInt(moq, 10) * 2 - 1, Number.parseInt(moq, 10) + 10)} units`, price: base },
+      { label: firstLabel, price: base },
       { label: "100 – 499 units", price: base * 0.92 },
       { label: "500 – 999 units", price: base * 0.86 },
       { label: "1000+ units", price: base * 0.78 },
