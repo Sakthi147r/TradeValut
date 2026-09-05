@@ -29,3 +29,15 @@ export function formatMoney(value: Money | string | number, currencyCode?: strin
     return `₹${amountNum.toFixed(0)}`;
   }
 }
+
+/**
+ * Append Shopify CDN width and format params to prevent downloading full-res master images.
+ */
+export function getOptimizedImageUrl(url: string | undefined | null, width = 480): string {
+  if (!url) return "";
+  if (url.includes("cdn.shopify.com")) {
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}width=${width}&format=webp`;
+  }
+  return url;
+}

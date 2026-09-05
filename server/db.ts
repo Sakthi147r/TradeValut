@@ -1,15 +1,19 @@
 import { and, desc, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { favorites, InsertUser, newsletterSubscriptions, quoteRequests, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
+let _client: ReturnType<typeof postgres> | null = null;
 let _db: ReturnType<typeof drizzle> | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      // prepare: false is required for Supabase transaction pooler (port 6543 / PgBouncer)
+      _client = postgres(process.env.DATABASE_URL, { prepare: false });
+      _db = drizzle(_client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -68,9 +72,13 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
+    await db
+      .insert(users)
+      .values(values)
+      .onConflictDoUpdate({
+        target: users.openId,
+        set: updateSet,
+      });
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
@@ -99,7 +107,7 @@ export async function listFavoriteHandles(userId: number): Promise<string[]> {
 export async function addFavorite(userId: number, productHandle: string): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
-  await db.insert(favorites).values({ userId, productHandle }).onDuplicateKeyUpdate({ set: { productHandle } });
+  await db.insert(favorites).values({ userId, productHandle }).onConflictDoNothing();
 }
 
 export async function removeFavorite(userId: number, productHandle: string): Promise<void> {
@@ -111,7 +119,13 @@ export async function removeFavorite(userId: number, productHandle: string): Pro
 export async function subscribeToNewsletter(email: string, source = "footer"): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
-  await db.insert(newsletterSubscriptions).values({ email, source }).onDuplicateKeyUpdate({ set: { source } });
+  await db
+    .insert(newsletterSubscriptions)
+    .values({ email, source })
+    .onConflictDoUpdate({
+      target: newsletterSubscriptions.email,
+      set: { source },
+    });
 }
 
 export async function createQuoteRequest(input: {

@@ -267,6 +267,39 @@ const CART_FRAGMENT = /* GraphQL */ `
 `;
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// In-Memory Catalog Cache
+// ---------------------------------------------------------------------------
+
+type CacheEntry<T> = { data: T; expiresAt: number };
+const catalogCache = new Map<string, CacheEntry<unknown>>();
+
+const CATALOG_CACHE_TTL_MS = 60 * 1000; // 60 seconds
+const COLLECTION_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function getCached<T>(key: string): T | null {
+  const entry = catalogCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    catalogCache.delete(key);
+    return null;
+  }
+  return entry.data as T;
+}
+
+function setCached<T>(key: string, data: T, ttlMs: number = CATALOG_CACHE_TTL_MS): void {
+  if (catalogCache.size > 500) {
+    const oldest = catalogCache.keys().next().value;
+    if (oldest) catalogCache.delete(oldest);
+  }
+  catalogCache.set(key, { data, expiresAt: Date.now() + ttlMs });
+}
+
+export function clearCatalogCache(): void {
+  catalogCache.clear();
+}
+
+// ---------------------------------------------------------------------------
 // Catalog
 // ---------------------------------------------------------------------------
 
@@ -282,6 +315,14 @@ export async function listProducts(
   options: ListProductsOptions = {}
 ): Promise<Product[]> {
   const first = options.first ?? 24;
+  const cacheKey = options.collectionHandle
+    ? `col:${options.collectionHandle}:${first}`
+    : `products:${first}`;
+
+  const cached = getCached<Product[]>(cacheKey);
+  if (cached) return cached;
+
+  let products: Product[];
 
   if (options.collectionHandle) {
     const data = await storefrontFetch<{
@@ -298,22 +339,35 @@ export async function listProducts(
       { handle: options.collectionHandle, first }
     );
     if (!data.collection) return [];
-    return data.collection.products.edges.map(e => normalizeProduct(e.node));
+    products = data.collection.products.edges.map(e => normalizeProduct(e.node));
+  } else {
+    const data = await storefrontFetch<{ products: Edges<RawProduct> }>(
+      `${PRODUCT_FRAGMENT}
+       query listProducts($first: Int!) {
+         products(first: $first, sortKey: TITLE) {
+           edges { node { ...ProductFields } }
+         }
+       }`,
+      { first }
+    );
+    products = data.products.edges.map(e => normalizeProduct(e.node));
   }
 
-  const data = await storefrontFetch<{ products: Edges<RawProduct> }>(
-    `${PRODUCT_FRAGMENT}
-     query listProducts($first: Int!) {
-       products(first: $first, sortKey: TITLE) {
-         edges { node { ...ProductFields } }
-       }
-     }`,
-    { first }
-  );
-  return data.products.edges.map(e => normalizeProduct(e.node));
+  setCached(cacheKey, products, CATALOG_CACHE_TTL_MS);
+  for (const p of products) {
+    if (p.handle) {
+      setCached(`product:${p.handle}`, p, CATALOG_CACHE_TTL_MS);
+    }
+  }
+
+  return products;
 }
 
 export async function getProductByHandle(handle: string): Promise<Product> {
+  const cacheKey = `product:${handle}`;
+  const cached = getCached<Product>(cacheKey);
+  if (cached) return cached;
+
   const data = await storefrontFetch<{ productByHandle: RawProduct | null }>(
     `${PRODUCT_FRAGMENT}
      query productByHandle($handle: String!) {
@@ -327,10 +381,16 @@ export async function getProductByHandle(handle: string): Promise<Product> {
       message: `Product "${handle}" not found`,
     });
   }
-  return normalizeProduct(data.productByHandle);
+  const product = normalizeProduct(data.productByHandle);
+  setCached(cacheKey, product, CATALOG_CACHE_TTL_MS);
+  return product;
 }
 
 export async function listCollections(first: number = 10): Promise<Collection[]> {
+  const cacheKey = `collections:${first}`;
+  const cached = getCached<Collection[]>(cacheKey);
+  if (cached) return cached;
+
   const data = await storefrontFetch<{ collections: Edges<RawCollection> }>(
     `${COLLECTION_FRAGMENT}
      query listCollections($first: Int!) {
@@ -340,10 +400,16 @@ export async function listCollections(first: number = 10): Promise<Collection[]>
      }`,
     { first }
   );
-  return data.collections.edges.map(e => normalizeCollection(e.node));
+  const collections = data.collections.edges.map(e => normalizeCollection(e.node));
+  setCached(cacheKey, collections, COLLECTION_CACHE_TTL_MS);
+  return collections;
 }
 
 export async function getCollectionByHandle(handle: string): Promise<Collection> {
+  const cacheKey = `collection:${handle}`;
+  const cached = getCached<Collection>(cacheKey);
+  if (cached) return cached;
+
   const data = await storefrontFetch<{ collection: RawCollection | null }>(
     `${COLLECTION_FRAGMENT}
      query collectionByHandle($handle: String!) {
@@ -357,7 +423,9 @@ export async function getCollectionByHandle(handle: string): Promise<Collection>
       message: `Collection "${handle}" not found`,
     });
   }
-  return normalizeCollection(data.collection);
+  const collection = normalizeCollection(data.collection);
+  setCached(cacheKey, collection, COLLECTION_CACHE_TTL_MS);
+  return collection;
 }
 
 // ---------------------------------------------------------------------------

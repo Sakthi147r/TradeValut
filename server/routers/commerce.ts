@@ -98,15 +98,18 @@ export const commerceRouter = router({
         const toRemove = input.lines.filter(l => l.quantity === 0).map(l => l.lineId);
         const toUpdate = input.lines.filter(l => l.quantity > 0);
 
-        let cart = null;
-        if (toUpdate.length) {
-          cart = await updateCartLines(input.cartId, toUpdate);
+        if (toUpdate.length && toRemove.length) {
+          const [, updatedCart] = await Promise.all([
+            removeCartLines(input.cartId, toRemove),
+            updateCartLines(input.cartId, toUpdate),
+          ]);
+          return updatedCart;
+        } else if (toUpdate.length) {
+          return await updateCartLines(input.cartId, toUpdate);
+        } else if (toRemove.length) {
+          return await removeCartLines(input.cartId, toRemove);
         }
-        if (toRemove.length) {
-          cart = await removeCartLines(input.cartId, toRemove);
-        }
-        if (!cart) cart = await getCart(input.cartId);
-        return cart;
+        return await getCart(input.cartId);
       }),
     removeLines: publicProcedure
       .input(

@@ -13,10 +13,13 @@ function makeCtx(user: AuthenticatedUser | null = null): TrpcContext {
   };
 }
 
+import { clearCatalogCache } from "./_core/shopify";
+
 const fetchMock = vi.fn();
 
 beforeEach(() => {
   fetchMock.mockReset();
+  clearCatalogCache();
   vi.stubGlobal("fetch", fetchMock);
   process.env.SHOPIFY_STORE_DOMAIN = "test.myshopify.com";
   process.env.SHOPIFY_STOREFRONT_API_ACCESS_TOKEN = "test-token";

@@ -112,22 +112,28 @@ function NewsletterForm() {
 }
 
 export default function StorefrontLayout({ children }: { children: ReactNode }) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { openCart, itemCount } = useCart();
   const { isAuthenticated } = useAuth();
   const closeMobile = () => setMobileOpen(false);
   const openSearch = () => {
-    if (location === "/") document.getElementById("collection")?.scrollIntoView({ behavior: "smooth" });
-    else window.location.href = "/#collection";
+    if (location === "/") {
+      document.getElementById("collection")?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      setLocation("/");
+      setTimeout(() => {
+        document.getElementById("collection")?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
   };
   const openAccount = () => {
     if (!isAuthenticated) startLogin();
-    else window.location.href = "/account";
+    else setLocation("/account");
   };
   const openSaved = () => {
     if (!isAuthenticated) startLogin();
-    else window.location.href = "/saved";
+    else setLocation("/saved");
   };
 
   return (

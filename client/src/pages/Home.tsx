@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { memo, useCallback, useDeferredValue, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { ArrowDown, ArrowRight, BadgeCheck, ChevronDown, Filter, Heart, Leaf, Search, Sparkles, Truck } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, getOptimizedImageUrl } from "@/lib/format";
 import type { Product } from "@shared/commerce/types";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -13,34 +13,148 @@ import { getMoq, getMoqNumber } from "@/lib/catalog";
 const HERO_ART = "/manus-storage/tradevault-hero-art_2a325192.png";
 const PRODUCT_CONCEPT = "/manus-storage/tradevault-product-concept_82bb906c.png";
 
-function ProductCard({ product, featured = false, isSaved, onToggleSave }: { product: Product; featured?: boolean; isSaved: boolean; onToggleSave: (handle: string) => void }) {
-  const { addItem, loading } = useCart();
+const ProductCard = memo(function ProductCard({
+  product,
+  featured = false,
+  isSaved,
+  onToggleSave,
+}: {
+  product: Product;
+  featured?: boolean;
+  isSaved: boolean;
+  onToggleSave: (handle: string) => void;
+}) {
+  const { addItem } = useCart();
+  const [isAdding, setIsAdding] = useState(false);
   const variant = product.variants[0];
+  const moqNumber = getMoqNumber(product);
+
+  const handleAdd = async () => {
+    if (!variant?.availableForSale || isAdding) return;
+    setIsAdding(true);
+    try {
+      await addItem(variant.id, moqNumber);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
   return (
     <article className={`product-card group ${featured ? "featured" : ""}`}>
       <Link href={`/product/${product.handle}`} className="product-image-wrap">
-        {product.images[0] ? <img src={product.images[0].url} alt={product.images[0].altText ?? product.title} className="product-image" loading="lazy" /> : <div className="image-placeholder"><Leaf size={30} /></div>}
+        {product.images[0] ? (
+          <img
+            src={getOptimizedImageUrl(product.images[0].url, 480)}
+            alt={product.images[0].altText ?? product.title}
+            className="product-image"
+            loading="lazy"
+            width={480}
+            height={446}
+          />
+        ) : (
+          <div className="image-placeholder"><Leaf size={30} /></div>
+        )}
         <span className="product-badge">{getMoq(product)} min</span>
         <span className="product-arrow"><ArrowRight size={17} /></span>
       </Link>
       <div className="product-card-body">
-        <div className="flex items-center justify-between gap-3"><span className="product-type">{product.productType}</span><div className="flex items-center gap-3"><span className="verified-line"><BadgeCheck size={13} /> Verified</span><button className={isSaved ? "saved-heart active" : "saved-heart"} aria-label={isSaved ? `Remove ${product.title} from saved products` : `Save ${product.title}`} onClick={() => onToggleSave(product.handle)}><Heart size={16} fill={isSaved ? "currentColor" : "none"} /></button></div></div>
-        <Link href={`/product/${product.handle}`} className="mt-3 block font-display text-[26px] leading-[1.05] tracking-[-0.02em] transition-colors group-hover:text-[#b47d22]">{product.title}</Link>
-        <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#6b716f]">{product.description.replace(/<[^>]*>/g, "")}</p>
-        <div className="mt-5 flex items-end justify-between gap-3 border-t border-[#e5e1d9] pt-4"><div><p className="text-[10px] uppercase tracking-[0.16em] text-[#8c8e87]">Starting price</p><p className="mt-1 font-semibold text-[#0b1830]">{formatMoney(product.priceRange.min)} <span className="text-xs font-normal text-[#8c8e87]">/ unit</span></p><p className="mt-1 text-[11px] text-[#8c8d87]">MOQ {getMoq(product)}</p></div><button className="quick-add" disabled={!variant?.availableForSale || loading} onClick={() => addItem(variant.id, getMoqNumber(product))}>{loading ? "Adding" : `Add ${getMoqNumber(product)}`}</button></div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="product-type">{product.productType}</span>
+          <div className="flex items-center gap-3">
+            <span className="verified-line"><BadgeCheck size={13} /> Verified</span>
+            <button
+              className={isSaved ? "saved-heart active" : "saved-heart"}
+              aria-label={isSaved ? `Remove ${product.title} from saved products` : `Save ${product.title}`}
+              onClick={() => onToggleSave(product.handle)}
+            >
+              <Heart size={16} fill={isSaved ? "currentColor" : "none"} />
+            </button>
+          </div>
+        </div>
+        <Link href={`/product/${product.handle}`} className="mt-3 block font-display text-[26px] leading-[1.05] tracking-[-0.02em] transition-colors group-hover:text-[#b47d22]">
+          {product.title}
+        </Link>
+        <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#6b716f]">
+          {product.description.replace(/<[^>]*>/g, "")}
+        </p>
+        <div className="mt-5 flex items-end justify-between gap-3 border-t border-[#e5e1d9] pt-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.16em] text-[#8c8e87]">Starting price</p>
+            <p className="mt-1 font-semibold text-[#0b1830]">
+              {formatMoney(product.priceRange.min)} <span className="text-xs font-normal text-[#8c8e87]">/ unit</span>
+            </p>
+            <p className="mt-1 text-[11px] text-[#8c8d87]">MOQ {getMoq(product)}</p>
+          </div>
+          <button
+            className="quick-add"
+            disabled={!variant?.availableForSale || isAdding}
+            onClick={handleAdd}
+          >
+            {isAdding ? "Adding" : `Add ${moqNumber}`}
+          </button>
+        </div>
       </div>
     </article>
   );
-}
+});
 
-function FilterBar({ products, category, setCategory, moq, setMoq, search, setSearch }: { products: Product[]; category: string; setCategory: (value: string) => void; moq: string; setMoq: (value: string) => void; search: string; setSearch: (value: string) => void }) {
-  const categories = ["All", ...Array.from(new Set(products.map(product => product.productType ?? "Other")))];
-  const moqs = ["All", ...Array.from(new Set(products.map(getMoq)))];
-  return <div className="filter-bar">
-    <div className="filter-search"><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search products or suppliers" aria-label="Search products or suppliers" /></div>
-    <label className="filter-select"><span>Category</span><select value={category} onChange={event => setCategory(event.target.value)}>{categories.map(value => <option value={value} key={value}>{value}</option>)}</select><ChevronDown size={15} /></label>
-    <label className="filter-select"><span>MOQ</span><select value={moq} onChange={event => setMoq(event.target.value)}>{moqs.map(value => <option value={value} key={value}>{value === "All" ? "All order sizes" : `${value}+`}</option>)}</select><ChevronDown size={15} /></label>
-  </div>;
+function FilterBar({
+  products,
+  category,
+  setCategory,
+  moq,
+  setMoq,
+  search,
+  setSearch,
+}: {
+  products: Product[];
+  category: string;
+  setCategory: (value: string) => void;
+  moq: string;
+  setMoq: (value: string) => void;
+  search: string;
+  setSearch: (value: string) => void;
+}) {
+  const categories = useMemo(
+    () => ["All", ...Array.from(new Set(products.map(product => product.productType ?? "Other")))],
+    [products]
+  );
+  const moqs = useMemo(
+    () => ["All", ...Array.from(new Set(products.map(getMoq)))],
+    [products]
+  );
+
+  return (
+    <div className="filter-bar">
+      <div className="filter-search">
+        <Search size={17} />
+        <input
+          value={search}
+          onChange={event => setSearch(event.target.value)}
+          placeholder="Search products or suppliers"
+          aria-label="Search products or suppliers"
+        />
+      </div>
+      <label className="filter-select">
+        <span>Category</span>
+        <select value={category} onChange={event => setCategory(event.target.value)}>
+          {categories.map(value => (
+            <option value={value} key={value}>{value}</option>
+          ))}
+        </select>
+        <ChevronDown size={15} />
+      </label>
+      <label className="filter-select">
+        <span>MOQ</span>
+        <select value={moq} onChange={event => setMoq(event.target.value)}>
+          {moqs.map(value => (
+            <option value={value} key={value}>{value === "All" ? "All order sizes" : `${value}+`}</option>
+          ))}
+        </select>
+        <ChevronDown size={15} />
+      </label>
+    </div>
+  );
 }
 
 export default function Home() {
@@ -53,16 +167,31 @@ export default function Home() {
   const [category, setCategory] = useState("All");
   const [moq, setMoq] = useState("All");
   const [search, setSearch] = useState("");
-  const filteredProducts = useMemo(() => products.filter(product => {
-    const haystack = `${product.title} ${product.vendor} ${product.productType} ${product.tags.join(" ")}`.toLowerCase();
-    return (category === "All" || product.productType === category) && (moq === "All" || getMoq(product) === moq) && haystack.includes(search.toLowerCase());
-  }), [products, category, moq, search]);
+  const deferredSearch = useDeferredValue(search);
+
+  const filteredProducts = useMemo(() => {
+    const query = deferredSearch.toLowerCase().trim();
+    return products.filter(product => {
+      const haystack = `${product.title} ${product.vendor} ${product.productType} ${product.tags.join(" ")}`.toLowerCase();
+      return (
+        (category === "All" || product.productType === category) &&
+        (moq === "All" || getMoq(product) === moq) &&
+        (!query || haystack.includes(query))
+      );
+    });
+  }, [products, category, moq, deferredSearch]);
+
   const savedHandles = useMemo(() => new Set(favorites.data ?? []), [favorites.data]);
-  const toggleSave = (handle: string) => {
+  const toggleSave = useCallback((handle: string) => {
     if (!isAuthenticated) { startLogin(); return; }
-    if (savedHandles.has(handle)) { removeFavorite.mutate({ productHandle: handle }); toast.success("Removed from saved products."); }
-    else { addFavorite.mutate({ productHandle: handle }); toast.success("Saved for later."); }
-  };
+    if (savedHandles.has(handle)) {
+      removeFavorite.mutate({ productHandle: handle });
+      toast.success("Removed from saved products.");
+    } else {
+      addFavorite.mutate({ productHandle: handle });
+      toast.success("Saved for later.");
+    }
+  }, [isAuthenticated, savedHandles, removeFavorite, addFavorite]);
 
   return <div>
     <section className="hero-section" style={{ backgroundImage: `url(${HERO_ART})` }}>
