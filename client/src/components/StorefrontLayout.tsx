@@ -116,7 +116,6 @@ export default function StorefrontLayout({ children }: { children: ReactNode }) 
   const [mobileOpen, setMobileOpen] = useState(false);
   const { openCart, itemCount } = useCart();
   const { isAuthenticated } = useAuth();
-  const favorites = trpc.customer.favorites.list.useQuery(undefined, { enabled: isAuthenticated, retry: false });
   const closeMobile = () => setMobileOpen(false);
   const openSearch = () => {
     if (location === "/") document.getElementById("collection")?.scrollIntoView({ behavior: "smooth" });
@@ -124,16 +123,16 @@ export default function StorefrontLayout({ children }: { children: ReactNode }) 
   };
   const openAccount = () => {
     if (!isAuthenticated) startLogin();
-    else toast.success(`Signed in${favorites.data?.length ? ` · ${favorites.data.length} saved` : ""}`);
+    else window.location.href = "/account";
   };
   const openSaved = () => {
     if (!isAuthenticated) startLogin();
-    else toast.success(`${favorites.data?.length ?? 0} saved product${favorites.data?.length === 1 ? "" : "s"}`);
+    else window.location.href = "/saved";
   };
 
   return (
     <div className="min-h-screen bg-[#fbfaf7] text-[#0b1830]">
-      <div className="announcement-bar"><Sparkles size={13} /> <span>Verified organic supply, from source to scale.</span><span className="hidden sm:inline text-amber-200/60">—</span><span className="hidden sm:inline text-amber-100/70">New season sourcing guide is live</span><ArrowRight size={13} /></div>
+      <div className="announcement-bar"><Sparkles size={13} /> <span>Organic wholesale, with clearer source context.</span><span className="hidden sm:inline text-amber-200/60">—</span><span className="hidden sm:inline text-amber-100/70">New season sourcing guide is live</span><ArrowRight size={13} /></div>
       <header className="site-header">
         <div className="mx-auto flex h-[78px] max-w-[1360px] items-center justify-between px-5 lg:px-10">
           <Logo />
@@ -156,7 +155,7 @@ export default function StorefrontLayout({ children }: { children: ReactNode }) 
       <footer className="site-footer">
         <div className="mx-auto max-w-[1360px] px-5 py-16 lg:px-10 lg:py-20">
           <div className="grid gap-12 lg:grid-cols-[1.35fr_1fr_1fr_1.1fr]">
-            <div><Logo /><p className="mt-6 max-w-sm text-sm leading-7 text-white/60">A considered marketplace for buyers who care where ingredients come from — and how far they can go.</p><div className="mt-7 flex items-center gap-2 text-xs text-amber-100/80"><ShieldCheck size={16} /> Verified suppliers, considered goods</div></div>
+            <div><Logo /><p className="mt-6 max-w-sm text-sm leading-7 text-white/60">A considered marketplace for buyers who care where ingredients come from — and how far they can go.</p><div className="mt-7 flex items-center gap-2 text-xs text-amber-100/80"><ShieldCheck size={16} /> Supplier context, considered goods</div></div>
             <div><p className="footer-label">Explore</p><div className="mt-5 space-y-3 text-sm text-white/70"><Link href="/#collection">All products</Link><Link href="/#collection">Mushrooms</Link><Link href="/#collection">Coconut & oils</Link><Link href="/#collection">Seeds & grains</Link></div></div>
             <div><p className="footer-label">For buyers</p><div className="mt-5 space-y-3 text-sm text-white/70"><Link href="/buyer-guide">Buyer guide</Link><a href="mailto:buyers@tradevault.co">Talk to sourcing</a><a href="mailto:support@tradevault.co">Support</a><span>Shipping & trade terms</span></div></div>
             <div><p className="footer-label">Stay close to the source</p><p className="mt-5 text-sm leading-6 text-white/60">Seasonal drops, supplier stories, and practical buying notes.</p><NewsletterForm /></div>

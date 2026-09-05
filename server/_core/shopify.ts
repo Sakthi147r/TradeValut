@@ -79,6 +79,8 @@ async function storefrontFetch<T>(
 
   let response: Response;
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12_000);
     response = await fetch(shopifyStorefrontEndpoint(), {
       method: "POST",
       headers: {
@@ -86,12 +88,16 @@ async function storefrontFetch<T>(
         "X-Shopify-Storefront-Access-Token": getShopifyStorefrontToken(),
       },
       body: JSON.stringify({ query, variables }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
   } catch (err) {
     console.error("[Shopify] Network error", err);
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: "Shopify Storefront API is unreachable",
+      message: err instanceof DOMException && err.name === "AbortError"
+        ? "Shopify Storefront API timed out"
+        : "Shopify Storefront API is unreachable",
     });
   }
 

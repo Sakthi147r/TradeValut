@@ -5,6 +5,8 @@ import Home from "@/pages/Home";
 import ProductPage from "@/pages/ProductPage";
 import SupplierPage from "@/pages/SupplierPage";
 import BuyerGuide from "@/pages/BuyerGuide";
+import AccountPage from "@/pages/AccountPage";
+import SavedPage from "@/pages/SavedPage";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import StorefrontLayout from "./components/StorefrontLayout";
@@ -17,6 +19,8 @@ function Router() {
     <Route path="/product/:handle" component={ProductPage} />
     <Route path="/supplier/:slug" component={SupplierPage} />
     <Route path="/buyer-guide" component={BuyerGuide} />
+    <Route path="/account" component={AccountPage} />
+    <Route path="/saved" component={SavedPage} />
     <Route path="/404" component={NotFound} />
     <Route component={NotFound} />
   </Switch>;

@@ -5,6 +5,11 @@ export function getMoq(product: Product) {
   return tag?.replace(/^MOQ\s*/i, "") ?? "Made to order";
 }
 
+export function getMoqNumber(product: Product) {
+  const parsed = Number.parseInt(getMoq(product).replace(/[^0-9]/g, ""), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
 export function getOrigin(vendor: string) {
   const origins: Record<string, string> = {
     "Forest Canopy Co.": "Pacific Northwest",

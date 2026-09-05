@@ -9,6 +9,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { toast } from "sonner";
 
 /**
  * Storefront cart context.
@@ -113,6 +114,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
           setCart(updated);
         }
         setIsOpen(true);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "We could not update your cart.");
+        throw error;
       } finally {
         setLoading(false);
       }
@@ -130,6 +134,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
           lines: [{ lineId, quantity }],
         });
         if (updated) setCart(updated);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "We could not update your cart.");
+        throw error;
       } finally {
         setLoading(false);
       }
@@ -147,6 +154,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
           lineIds: [lineId],
         });
         setCart(updated);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "We could not remove that item.");
+        throw error;
       } finally {
         setLoading(false);
       }

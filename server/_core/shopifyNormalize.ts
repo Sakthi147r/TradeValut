@@ -170,6 +170,7 @@ function normalizeCartItem(line: RawCartLine): CartItem {
  */
 export function withChannelParam(checkoutUrl: string): string {
   if (!checkoutUrl) return checkoutUrl;
+  if (/[?&]channel=/.test(checkoutUrl)) return checkoutUrl;
   return checkoutUrl.includes("?")
     ? `${checkoutUrl}&channel=online_store`
     : `${checkoutUrl}?channel=online_store`;
