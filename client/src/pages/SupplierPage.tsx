@@ -2,7 +2,7 @@ import { Link, useParams } from "wouter";
 import { ArrowLeft, ArrowRight, BadgeCheck, Globe2, Leaf, MapPin, ShieldCheck, Sparkles } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { formatMoney } from "@/lib/format";
-import { getMoq, getOrigin } from "@/pages/Home";
+import { getMoq, getOrigin } from "@/lib/catalog";
 import { useCart } from "@/contexts/CartContext";
 import type { Product } from "@shared/commerce/types";
 

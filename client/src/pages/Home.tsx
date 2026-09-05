@@ -8,37 +8,10 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
 import { toast } from "sonner";
+import { getMoq } from "@/lib/catalog";
 
 const HERO_ART = "/manus-storage/tradevault-hero-art_2a325192.png";
 const PRODUCT_CONCEPT = "/manus-storage/tradevault-product-concept_82bb906c.png";
-
-function getMoq(product: Product) {
-  const tag = product.tags.find(value => /MOQ/i.test(value));
-  return tag?.replace(/^MOQ\s*/i, "") ?? "Made to order";
-}
-
-function getOrigin(vendor: string) {
-  const origins: Record<string, string> = {
-    "Forest Canopy Co.": "Pacific Northwest",
-    "Ceylon Naturals": "Sri Lanka",
-    "AgriRoots Global": "India",
-    "Island Harvest Collective": "Kerala",
-    "Kongu Green Collective": "Tamil Nadu, India",
-    "Madurai Earth Organics": "Tamil Nadu, India",
-    "Western Ghats Harvest": "Tamil Nadu, India",
-    "Southern Seed House": "Tamil Nadu, India",
-    "Kongu Grain Collective": "Tamil Nadu, India",
-    "Southern Pulse Collective": "Tamil Nadu, India",
-    "Kongu Oil Press": "Tamil Nadu, India",
-    "Coastal Palm Organics": "Tamil Nadu, India",
-    "Sivaganga Cane Collective": "Tamil Nadu, India",
-    "Southern Botanica": "Tamil Nadu, India",
-    "Delta Fresh Organics": "Tamil Nadu, India",
-    "Southern Grove Organics": "Tamil Nadu, India",
-    "Delta Grain Collective": "Tamil Nadu, India",
-  };
-  return origins[vendor] ?? "Verified origin";
-}
 
 function ProductCard({ product, featured = false, isSaved, onToggleSave }: { product: Product; featured?: boolean; isSaved: boolean; onToggleSave: (handle: string) => void }) {
   const { addItem, loading } = useCart();
@@ -119,5 +92,3 @@ export default function Home() {
     <section className="supplier-cta"><div className="mx-auto grid max-w-[1360px] items-center gap-8 px-5 py-16 lg:grid-cols-[1fr_auto] lg:px-10"><div><p className="eyebrow text-amber-200"><span className="eyebrow-rule" /> Meet the source</p><h2 className="mt-4 max-w-2xl font-display text-4xl leading-[0.98] tracking-[-0.03em] text-white sm:text-6xl">Great goods have a<br /><em className="text-amber-200">story worth knowing.</em></h2></div><Link href="/supplier/forest-canopy-co" className="button-amber">Meet our suppliers <ArrowRight size={16} /></Link></div></section>
   </div>;
 }
-
-export { getMoq, getOrigin };

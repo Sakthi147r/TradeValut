@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, BadgeCheck, Check, ChevronDown, CircleHelp, Glob
 import { trpc } from "@/lib/trpc";
 import { useCart } from "@/contexts/CartContext";
 import { formatMoney } from "@/lib/format";
-import { getMoq, getOrigin } from "@/pages/Home";
+import { getMoq, getOrigin } from "@/lib/catalog";
 import type { Product } from "@shared/commerce/types";
 import { toast } from "sonner";
 
