@@ -23,6 +23,8 @@ function getOrigin(vendor: string) {
     "Ceylon Naturals": "Sri Lanka",
     "AgriRoots Global": "India",
     "Island Harvest Collective": "Kerala",
+    "Kongu Green Collective": "Tamil Nadu, India",
+    "Madurai Earth Organics": "Tamil Nadu, India",
   };
   return origins[vendor] ?? "Verified origin";
 }

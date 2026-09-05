@@ -2,7 +2,7 @@ import type { Money } from "@shared/commerce/types";
 
 /**
  * Format a Money or raw amount string into a localized currency string.
- * Falls back to `$X` rounding if Intl rejects the currency code.
+ * Defaults raw amounts to INR and falls back to a rupee amount if Intl rejects the currency code.
  */
 export function formatMoney(value: Money | string | number, currencyCode?: string): string {
   let amountNum: number;
@@ -13,7 +13,7 @@ export function formatMoney(value: Money | string | number, currencyCode?: strin
     code = value.currencyCode;
   } else {
     amountNum = typeof value === "string" ? Number.parseFloat(value) : value;
-    code = currencyCode ?? "USD";
+    code = currencyCode ?? "INR";
   }
 
   if (Number.isNaN(amountNum)) return "—";
@@ -26,6 +26,6 @@ export function formatMoney(value: Money | string | number, currencyCode?: strin
       maximumFractionDigits: 2,
     }).format(amountNum);
   } catch {
-    return `$${amountNum.toFixed(0)}`;
+    return `₹${amountNum.toFixed(0)}`;
   }
 }
