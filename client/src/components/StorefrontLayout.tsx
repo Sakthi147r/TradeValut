@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
   ArrowRight,
@@ -19,6 +19,10 @@ import {
 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { formatMoney } from "@/lib/format";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { startLogin } from "@/const";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 function Logo() {
   return (
@@ -97,11 +101,35 @@ function CartDrawer() {
   );
 }
 
+function NewsletterForm() {
+  const [email, setEmail] = useState("");
+  const subscribe = trpc.customer.newsletter.subscribe.useMutation({
+    onSuccess: () => { setEmail(""); toast.success("You’re on the TradeVault list."); },
+    onError: error => toast.error(error.message),
+  });
+  const submit = (event: FormEvent) => { event.preventDefault(); subscribe.mutate({ email, source: "footer" }); };
+  return <form onSubmit={submit} className="mt-5 flex border-b border-white/20 pb-3"><input aria-label="Email address" type="email" required value={email} onChange={event => setEmail(event.target.value)} placeholder="Your work email" className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/40" /><button type="submit" disabled={subscribe.isPending} className="text-amber-200" aria-label="Subscribe"><ArrowRight size={18} /></button></form>;
+}
+
 export default function StorefrontLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { openCart, itemCount } = useCart();
+  const { isAuthenticated } = useAuth();
+  const favorites = trpc.customer.favorites.list.useQuery(undefined, { enabled: isAuthenticated, retry: false });
   const closeMobile = () => setMobileOpen(false);
+  const openSearch = () => {
+    if (location === "/") document.getElementById("collection")?.scrollIntoView({ behavior: "smooth" });
+    else window.location.href = "/#collection";
+  };
+  const openAccount = () => {
+    if (!isAuthenticated) startLogin();
+    else toast.success(`Signed in${favorites.data?.length ? ` · ${favorites.data.length} saved` : ""}`);
+  };
+  const openSaved = () => {
+    if (!isAuthenticated) startLogin();
+    else toast.success(`${favorites.data?.length ?? 0} saved product${favorites.data?.length === 1 ? "" : "s"}`);
+  };
 
   return (
     <div className="min-h-screen bg-[#fbfaf7] text-[#0b1830]">
@@ -115,9 +143,9 @@ export default function StorefrontLayout({ children }: { children: ReactNode }) 
             <Link href="/buyer-guide" className="nav-link">Buyer guide</Link>
           </nav>
           <div className="flex items-center gap-2 sm:gap-3">
-            <button className="header-icon hidden sm:grid" aria-label="Search"><Search size={18} /></button>
-            <button className="header-icon hidden sm:grid" aria-label="Account"><CircleUserRound size={19} /></button>
-            <button className="header-icon hidden sm:grid" aria-label="Saved products"><Heart size={18} /></button>
+            <button className="header-icon hidden sm:grid" aria-label="Search" onClick={openSearch}><Search size={18} /></button>
+            <button className="header-icon hidden sm:grid" aria-label="Account" onClick={openAccount}><CircleUserRound size={19} /></button>
+            <button className="header-icon hidden sm:grid" aria-label="Saved products" onClick={openSaved}><Heart size={18} /></button>
             <button className="cart-button" onClick={openCart} aria-label={`Open cart with ${itemCount} items`}><ShoppingBag size={18} /><span className="hidden sm:inline">Cart</span>{itemCount > 0 && <b>{itemCount}</b>}</button>
             <button className="header-icon lg:hidden" aria-label="Open menu" onClick={() => setMobileOpen(value => !value)}>{mobileOpen ? <X size={20} /> : <Menu size={20} />}</button>
           </div>
@@ -131,7 +159,7 @@ export default function StorefrontLayout({ children }: { children: ReactNode }) 
             <div><Logo /><p className="mt-6 max-w-sm text-sm leading-7 text-white/60">A considered marketplace for buyers who care where ingredients come from — and how far they can go.</p><div className="mt-7 flex items-center gap-2 text-xs text-amber-100/80"><ShieldCheck size={16} /> Verified suppliers, considered goods</div></div>
             <div><p className="footer-label">Explore</p><div className="mt-5 space-y-3 text-sm text-white/70"><Link href="/#collection">All products</Link><Link href="/#collection">Mushrooms</Link><Link href="/#collection">Coconut & oils</Link><Link href="/#collection">Seeds & grains</Link></div></div>
             <div><p className="footer-label">For buyers</p><div className="mt-5 space-y-3 text-sm text-white/70"><Link href="/buyer-guide">Buyer guide</Link><a href="mailto:buyers@tradevault.co">Talk to sourcing</a><a href="mailto:support@tradevault.co">Support</a><span>Shipping & trade terms</span></div></div>
-            <div><p className="footer-label">Stay close to the source</p><p className="mt-5 text-sm leading-6 text-white/60">Seasonal drops, supplier stories, and practical buying notes.</p><div className="mt-5 flex border-b border-white/20 pb-3"><input aria-label="Email address" placeholder="Your work email" className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/40" /><button className="text-amber-200" aria-label="Subscribe"><ArrowRight size={18} /></button></div></div>
+            <div><p className="footer-label">Stay close to the source</p><p className="mt-5 text-sm leading-6 text-white/60">Seasonal drops, supplier stories, and practical buying notes.</p><NewsletterForm /></div>
           </div>
           <div className="mt-16 flex flex-col justify-between gap-3 border-t border-white/10 pt-5 text-[11px] uppercase tracking-[0.12em] text-white/35 sm:flex-row"><span>© 2026 TradeVault</span><span>Organic. Wholesale. Verified.</span></div>
         </div>

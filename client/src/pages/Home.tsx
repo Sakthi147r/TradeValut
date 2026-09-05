@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { ArrowDown, ArrowRight, BadgeCheck, ChevronDown, Filter, Leaf, Search, Sparkles, Truck } from "lucide-react";
+import { ArrowDown, ArrowRight, BadgeCheck, ChevronDown, Filter, Heart, Leaf, Search, Sparkles, Truck } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { formatMoney } from "@/lib/format";
 import type { Product } from "@shared/commerce/types";
 import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { startLogin } from "@/const";
+import { toast } from "sonner";
 
 const HERO_ART = "/manus-storage/tradevault-hero-art_2a325192.png";
 const PRODUCT_CONCEPT = "/manus-storage/tradevault-product-concept_82bb906c.png";
@@ -24,7 +27,7 @@ function getOrigin(vendor: string) {
   return origins[vendor] ?? "Verified origin";
 }
 
-function ProductCard({ product, featured = false }: { product: Product; featured?: boolean }) {
+function ProductCard({ product, featured = false, isSaved, onToggleSave }: { product: Product; featured?: boolean; isSaved: boolean; onToggleSave: (handle: string) => void }) {
   const { addItem, loading } = useCart();
   const variant = product.variants[0];
   return (
@@ -35,7 +38,7 @@ function ProductCard({ product, featured = false }: { product: Product; featured
         <span className="product-arrow"><ArrowRight size={17} /></span>
       </Link>
       <div className="product-card-body">
-        <div className="flex items-center justify-between gap-3"><span className="product-type">{product.productType}</span><span className="verified-line"><BadgeCheck size={13} /> Verified</span></div>
+        <div className="flex items-center justify-between gap-3"><span className="product-type">{product.productType}</span><div className="flex items-center gap-3"><span className="verified-line"><BadgeCheck size={13} /> Verified</span><button className={isSaved ? "saved-heart active" : "saved-heart"} aria-label={isSaved ? `Remove ${product.title} from saved products` : `Save ${product.title}`} onClick={() => onToggleSave(product.handle)}><Heart size={16} fill={isSaved ? "currentColor" : "none"} /></button></div></div>
         <Link href={`/product/${product.handle}`} className="mt-3 block font-display text-[26px] leading-[1.05] tracking-[-0.02em] transition-colors group-hover:text-[#b47d22]">{product.title}</Link>
         <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#6b716f]">{product.description.replace(/<[^>]*>/g, "")}</p>
         <div className="mt-5 flex items-end justify-between gap-3 border-t border-[#e5e1d9] pt-4"><div><p className="text-[10px] uppercase tracking-[0.16em] text-[#8c8e87]">Starting price</p><p className="mt-1 font-semibold text-[#0b1830]">{formatMoney(product.priceRange.min)} <span className="text-xs font-normal text-[#8c8e87]">/ unit</span></p></div><button className="quick-add" disabled={!variant?.availableForSale || loading} onClick={() => addItem(variant.id, 1)}>{loading ? "Adding" : "Add to cart"}</button></div>
@@ -56,6 +59,11 @@ function FilterBar({ products, category, setCategory, moq, setMoq, search, setSe
 
 export default function Home() {
   const { data: products = [], isLoading } = trpc.commerce.products.list.useQuery({ first: 24 });
+  const { isAuthenticated } = useAuth();
+  const utils = trpc.useUtils();
+  const favorites = trpc.customer.favorites.list.useQuery(undefined, { enabled: isAuthenticated, retry: false });
+  const addFavorite = trpc.customer.favorites.add.useMutation({ onSuccess: () => utils.customer.favorites.list.invalidate() });
+  const removeFavorite = trpc.customer.favorites.remove.useMutation({ onSuccess: () => utils.customer.favorites.list.invalidate() });
   const [category, setCategory] = useState("All");
   const [moq, setMoq] = useState("All");
   const [search, setSearch] = useState("");
@@ -63,6 +71,12 @@ export default function Home() {
     const haystack = `${product.title} ${product.vendor} ${product.productType} ${product.tags.join(" ")}`.toLowerCase();
     return (category === "All" || product.productType === category) && (moq === "All" || getMoq(product) === moq) && haystack.includes(search.toLowerCase());
   }), [products, category, moq, search]);
+  const savedHandles = useMemo(() => new Set(favorites.data ?? []), [favorites.data]);
+  const toggleSave = (handle: string) => {
+    if (!isAuthenticated) { startLogin(); return; }
+    if (savedHandles.has(handle)) { removeFavorite.mutate({ productHandle: handle }); toast.success("Removed from saved products."); }
+    else { addFavorite.mutate({ productHandle: handle }); toast.success("Saved for later."); }
+  };
 
   return <div>
     <section className="hero-section" style={{ backgroundImage: `url(${HERO_ART})` }}>
@@ -84,7 +98,7 @@ export default function Home() {
     <section id="collection" className="collection-section mx-auto max-w-[1360px] px-5 py-20 lg:px-10 lg:py-28">
       <div className="flex flex-col justify-between gap-7 lg:flex-row lg:items-end"><div><p className="eyebrow text-[#b47d22]"><span className="eyebrow-rule amber" /> The collection</p><h2 className="section-title mt-5 max-w-2xl">A better starting point<br /><em>for your next order.</em></h2></div><p className="max-w-sm text-sm leading-6 text-[#6b716f]">From first sample to full production run, make every ingredient count. Explore products with the context to buy them well.</p></div>
       <div className="mt-11"><FilterBar products={products} category={category} setCategory={setCategory} moq={moq} setMoq={setMoq} search={search} setSearch={setSearch} /></div>
-      {isLoading ? <div className="product-grid mt-8">{[1, 2, 3, 4].map(value => <div className="skeleton-card" key={value}><div className="skeleton-image" /><div className="h-5 w-2/3 animate-pulse rounded bg-[#ece9e2]" /><div className="mt-3 h-4 w-full animate-pulse rounded bg-[#ece9e2]" /></div>)}</div> : filteredProducts.length > 0 ? <div className="product-grid mt-8">{filteredProducts.map((product, index) => <ProductCard key={product.id} product={product} featured={index === 0} />)}</div> : <div className="empty-state mt-8"><Filter size={24} /><h3 className="font-display text-3xl">No goods match that brief.</h3><p>Try a wider category or MOQ, or clear the search.</p><button className="button-outline mt-4" onClick={() => { setCategory("All"); setMoq("All"); setSearch(""); }}>Reset filters</button></div>}
+      {isLoading ? <div className="product-grid mt-8">{[1, 2, 3, 4].map(value => <div className="skeleton-card" key={value}><div className="skeleton-image" /><div className="h-5 w-2/3 animate-pulse rounded bg-[#ece9e2]" /><div className="mt-3 h-4 w-full animate-pulse rounded bg-[#ece9e2]" /></div>)}</div> : filteredProducts.length > 0 ? <div className="product-grid mt-8">{filteredProducts.map((product, index) => <ProductCard key={product.id} product={product} featured={index === 0} isSaved={savedHandles.has(product.handle)} onToggleSave={toggleSave} />)}</div> : <div className="empty-state mt-8"><Filter size={24} /><h3 className="font-display text-3xl">No goods match that brief.</h3><p>Try a wider category or MOQ, or clear the search.</p><button className="button-outline mt-4" onClick={() => { setCategory("All"); setMoq("All"); setSearch(""); }}>Reset filters</button></div>}
     </section>
 
     <section className="story-section"><div className="mx-auto grid max-w-[1360px] items-center gap-12 px-5 py-20 lg:grid-cols-[0.95fr_1.05fr] lg:gap-20 lg:px-10 lg:py-28"><div className="story-art"><img src={PRODUCT_CONCEPT} alt="Premium organic ingredients arranged on a stone pedestal" /><div className="story-stamp"><span>01</span><b>Field notes</b><small>From the source</small></div></div><div><p className="eyebrow text-[#b47d22]"><span className="eyebrow-rule amber" /> The TradeVault standard</p><h2 className="section-title mt-5">The details are<br /><em>part of the product.</em></h2><p className="mt-7 max-w-lg text-base leading-8 text-[#6b716f]">Buying in bulk should feel considered, not complicated. We pair quality goods with clear MOQs, transparent supplier context, and a checkout flow built for business buyers.</p><div className="mt-9 space-y-5"><div className="story-point"><span>01</span><div><strong>Curated by category</strong><p>Focused ingredients for food, wellness, hospitality, and retail.</p></div></div><div className="story-point"><span>02</span><div><strong>Verified at the source</strong><p>Every supplier profile carries origin, specialty, and quality cues.</p></div></div><div className="story-point"><span>03</span><div><strong>Built for the next run</strong><p>MOQ-led buying and bulk-ready pricing make planning easier.</p></div></div></div><Link href="/buyer-guide" className="button-outline mt-10">Read the buyer guide <ArrowRight size={16} /></Link></div></div></section>

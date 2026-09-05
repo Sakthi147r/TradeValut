@@ -8,6 +8,13 @@
       "when": 1788595611432,
       "tag": "0000_ancient_randall",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1788599898679,
+      "tag": "0001_lumpy_elektra",
+      "breakpoints": true
     }
   ]
 }

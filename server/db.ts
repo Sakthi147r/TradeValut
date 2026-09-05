@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { favorites, InsertUser, newsletterSubscriptions, quoteRequests, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,44 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function listFavoriteHandles(userId: number): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ productHandle: favorites.productHandle }).from(favorites).where(eq(favorites.userId, userId));
+  return rows.map(row => row.productHandle);
+}
+
+export async function addFavorite(userId: number, productHandle: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.insert(favorites).values({ userId, productHandle }).onDuplicateKeyUpdate({ set: { productHandle } });
+}
+
+export async function removeFavorite(userId: number, productHandle: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.delete(favorites).where(and(eq(favorites.userId, userId), eq(favorites.productHandle, productHandle)));
+}
+
+export async function subscribeToNewsletter(email: string, source = "footer"): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.insert(newsletterSubscriptions).values({ email, source }).onDuplicateKeyUpdate({ set: { source } });
+}
+
+export async function createQuoteRequest(input: {
+  email: string;
+  productHandle?: string;
+  quantity?: number;
+  message?: string;
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.insert(quoteRequests).values(input);
+}
+
+export async function listRecentQuoteRequests(limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(quoteRequests).orderBy(desc(quoteRequests.createdAt)).limit(limit);
+}
